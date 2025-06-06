@@ -213,10 +213,9 @@ const resetForm = () => {
       priority: 'medium',
       category: '',
       dueDate: '',
-    });
+});
     setShowTaskForm(false);
     setEditingTask(null);
-  };
   };
 
   const startEditTask = (task) => {
