@@ -21,9 +21,8 @@ import Card from '@/components/atoms/Card'
 import AppHeader from '@/components/organisms/AppHeader'
 import TaskStatsCard from '@/components/organisms/TaskStatsCard'
 import QuickActions from '@/components/molecules/QuickActions'
-import { taskService } from '@/services/taskService'
-import { categoryService } from '@/services/categoryService'
-
+import taskService from '../../services/api/taskService'
+import categoryService from '../../services/api/categoryService'
 const HomePage = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [tasks, setTasks] = useState([]);
@@ -79,15 +78,13 @@ const [newTask, setNewTask] = useState({
     }
 };
 
-  const handleCreateTask = async () => {
+const handleCreateTask = async () => {
     try {
       const taskData = {
-        ...newTask,
         ...newTask,
         status: newTask.status || 'todo', // Ensure status is set
         isArchived: newTask.isArchived || false, // Ensure isArchived is set
       };
-
       if (editingTask) {
         const updatedTask = await taskService.update(editingTask.id, taskData);
         setTasks((prev) =>
