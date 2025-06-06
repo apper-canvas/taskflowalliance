@@ -7,7 +7,7 @@ import Select from '../components/atoms/Select'
 import Label from '../components/atoms/Label'
 import Card from '../components/atoms/Card'
 import Badge from '../components/atoms/Badge'
-import { projectService } from '../services'
+import projectService from '../services/api/projectService'
 
 const Projects = () => {
   // State management
@@ -206,10 +206,12 @@ const Projects = () => {
             Manage and track your projects
           </p>
         </div>
-        <Button
+<Button
           onClick={() => openModal('create')}
           className="flex items-center gap-2"
           disabled={loading}
+          title="Create a new project"
+          aria-label="Create new project"
         >
           <Plus size={20} />
           Add Project
@@ -267,11 +269,16 @@ const Projects = () => {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-surface-50 dark:bg-surface-800">
+<thead className="bg-surface-50 dark:bg-surface-800">
                     <tr>
                       <th 
                         className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-700"
                         onClick={() => handleSort('name')}
+                        title="Click to sort by project name"
+                        tabIndex="0"
+                        onKeyDown={(e) => e.key === 'Enter' && handleSort('name')}
+                        role="button"
+                        aria-label="Sort by project name"
                       >
                         <div className="flex items-center gap-2">
                           Name
@@ -281,6 +288,11 @@ const Projects = () => {
                       <th 
                         className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-700"
                         onClick={() => handleSort('status')}
+                        title="Click to sort by project status"
+                        tabIndex="0"
+                        onKeyDown={(e) => e.key === 'Enter' && handleSort('status')}
+                        role="button"
+                        aria-label="Sort by project status"
                       >
                         <div className="flex items-center gap-2">
                           Status
@@ -290,6 +302,11 @@ const Projects = () => {
                       <th 
                         className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-700"
                         onClick={() => handleSort('start_date')}
+                        title="Click to sort by start date"
+                        tabIndex="0"
+                        onKeyDown={(e) => e.key === 'Enter' && handleSort('start_date')}
+                        role="button"
+                        aria-label="Sort by start date"
                       >
                         <div className="flex items-center gap-2">
                           Start Date
@@ -299,20 +316,32 @@ const Projects = () => {
                       <th 
                         className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-700"
                         onClick={() => handleSort('end_date')}
+                        title="Click to sort by end date"
+                        tabIndex="0"
+                        onKeyDown={(e) => e.key === 'Enter' && handleSort('end_date')}
+                        role="button"
+                        aria-label="Sort by end date"
                       >
                         <div className="flex items-center gap-2">
                           End Date
                           <ArrowUpDown size={14} />
                         </div>
                       </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white dark:bg-surface-900 divide-y divide-surface-200 dark:divide-surface-700">
+<tbody className="bg-white dark:bg-surface-900 divide-y divide-surface-200 dark:divide-surface-700">
                     {filteredProjects.map((project) => (
                       <tr
                         key={project.id}
                         className="hover:bg-surface-50 dark:hover:bg-surface-800 cursor-pointer"
                         onClick={() => handleRowClick(project)}
+                        tabIndex="0"
+                        onKeyDown={(e) => e.key === 'Enter' && handleRowClick(project)}
+                        role="button"
+                        aria-label={`View details for ${project.name}`}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="font-medium text-surface-900 dark:text-white">
@@ -332,6 +361,33 @@ const Projects = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-surface-500">
                           {formatDate(project.end_date)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                openModal('edit', project)
+                                setSelectedProject(project)
+                              }}
+                              className="text-indigo-600 hover:text-indigo-900 p-1 rounded"
+                              title="Edit project"
+                              aria-label={`Edit ${project.name}`}
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDelete(project)
+                              }}
+                              className="text-red-600 hover:text-red-900 p-1 rounded"
+                              title="Delete project"
+                              aria-label={`Delete ${project.name}`}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -546,7 +602,7 @@ const Projects = () => {
           </Card>
         </div>
       )}
-    </div>
+</div>
   )
 }
 
