@@ -1,0 +1,38 @@
+[
+  {
+    "id": "work",
+    "name": "Work",
+    "color": "#3B82F6",
+    "taskCount": 6
+  },
+  {
+    "id": "personal",
+    "name": "Personal",
+    "color": "#10B981",
+    "taskCount": 7
+  },
+  {
+    "id": "health",
+    "name": "Health",
+    "color": "#F59E0B",
+    "taskCount": 2
+  },
+  {
+    "id": "learning",
+    "name": "Learning",
+    "color": "#8B5CF6",
+    "taskCount": 3
+  },
+  {
+    "id": "finance",
+    "name": "Finance",
+    "color": "#EF4444",
+    "taskCount": 1
+  },
+  {
+    "id": "home",
+    "name": "Home",
+    "color": "#06B6D4",
+    "taskCount": 2
+  }
+]
