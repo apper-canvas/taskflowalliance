@@ -20,7 +20,7 @@ import TaskFormModal from '@/components/organisms/TaskFormModal'
 import Card from '@/components/atoms/Card'
 import AppHeader from '@/components/organisms/AppHeader'
 import TaskStatsCard from '@/components/organisms/TaskStatsCard'
-import QuickActions from '@/components/molecules/QuickActions'
+import QuickActions from '../organisms/QuickActions'
 import taskService from '../../services/api/taskService'
 import categoryService from '../../services/api/categoryService'
 const HomePage = () => {
