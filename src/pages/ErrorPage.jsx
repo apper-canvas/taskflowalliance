@@ -1,9 +1,9 @@
-import React from 'react'
-import { useSearchParams, Link } from 'react-router-dom'
+import React from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 
 const ErrorPage = () => {
-  const [searchParams] = useSearchParams()
-  const errorMessage = searchParams.get('message') || 'An error occurred'
+  const [searchParams] = useSearchParams();
+  const errorMessage = searchParams.get('message') || 'An error occurred';
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface-50 dark:bg-surface-900">
@@ -15,7 +15,7 @@ const ErrorPage = () => {
         </Link>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ErrorPage
+export default ErrorPage;

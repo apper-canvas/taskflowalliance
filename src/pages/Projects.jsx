@@ -1,229 +1,196 @@
-import { useState, useEffect } from 'react'
-import { toast } from 'react-toastify'
-import { Plus, Search, Filter, Calendar, Users, ArrowUpDown, Edit2, Trash2, X } from 'lucide-react'
-import Button from '../components/atoms/Button'
-import Input from '../components/atoms/Input'
-import Select from '../components/atoms/Select'
-import Label from '../components/atoms/Label'
-import Card from '../components/atoms/Card'
-import Badge from '../components/atoms/Badge'
-import projectService from '../services/api/projectService'
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { toast } from 'react-toastify';
+import { Search, Plus, Filter, Calendar, Users, BarChart3, Edit, Trash2 } from 'lucide-react';
+import AppHeader from '../components/organisms/AppHeader';
+import Card from '../components/atoms/Card';
+import Button from '../components/atoms/Button';
+import Input from '../components/atoms/Input';
+import Badge from '../components/atoms/Badge';
+import { projectService } from '../services/api/projectService';
 
 const Projects = () => {
-  // State management
-  const [projects, setProjects] = useState([])
-  const [filteredProjects, setFilteredProjects] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [selectedProject, setSelectedProject] = useState(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [modalMode, setModalMode] = useState('create') // 'create' or 'edit'
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [sortBy, setSortBy] = useState('name')
-  const [sortOrder, setSortOrder] = useState('asc')
+  const [projects, setProjects] = useState([]);
+  const [filteredProjects, setFilteredProjects] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Form data
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    start_date: '',
-    end_date: '',
-    status: 'planning',
-    assigned_users: []
-  })
-
-  // Load projects on component mount
+  // Load projects
   useEffect(() => {
-    loadProjects()
-  }, [])
-
-  // Filter and sort projects when dependencies change
-  useEffect(() => {
-    filterAndSortProjects()
-  }, [projects, searchTerm, statusFilter, sortBy, sortOrder])
+    loadProjects();
+  }, []);
 
   const loadProjects = async () => {
-    setLoading(true)
-    setError(null)
     try {
-      const data = await projectService.getAll()
-      setProjects(data)
+      setLoading(true);
+      setError(null);
+      const data = await projectService.getAll();
+      setProjects(data || []);
+      setFilteredProjects(data || []);
     } catch (err) {
-      setError(err.message)
-      toast.error('Failed to load projects')
+      console.error('Error loading projects:', err);
+      setError('Failed to load projects. Please try again.');
+      toast.error('Failed to load projects');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const filterAndSortProjects = async () => {
+  // Filter projects based on search and status
+  useEffect(() => {
+    let filtered = [...(projects || [])];
+
+    if (searchTerm) {
+      filtered = filtered.filter(project =>
+        project?.ProjectName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project?.Description?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (selectedStatus) {
+      filtered = filtered.filter(project => project?.Status === selectedStatus);
+    }
+
+    setFilteredProjects(filtered);
+  }, [projects, searchTerm, selectedStatus]);
+
+  const handleCreateProject = async (projectData) => {
     try {
-      const params = {
-        search: searchTerm,
-        status: statusFilter,
-        sortBy,
-        sortOrder
+      const newProject = await projectService.create(projectData);
+      if (newProject) {
+        setProjects(prev => [newProject, ...(prev || [])]);
+        setIsCreateModalOpen(false);
+        toast.success('Project created successfully');
       }
-      const data = await projectService.getAll(params)
-      setFilteredProjects(data)
     } catch (err) {
-      console.error('Error filtering projects:', err)
+      console.error('Error creating project:', err);
+      setError('Failed to create project. Please try again.');
+      toast.error('Failed to create project');
     }
-  }
+  };
 
-  const handleSort = (field) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortBy(field)
-      setSortOrder('asc')
+  const handleUpdateProject = async (projectData) => {
+    try {
+      if (!editingProject?.Id) return;
+      
+      const updatedProject = await projectService.update(editingProject.Id, projectData);
+      if (updatedProject) {
+        setProjects(prev => (prev || []).map(project =>
+          project.Id === editingProject.Id ? updatedProject : project
+        ));
+        setEditingProject(null);
+        setIsCreateModalOpen(false);
+        toast.success('Project updated successfully');
+      }
+    } catch (err) {
+      console.error('Error updating project:', err);
+      setError('Failed to update project. Please try again.');
+      toast.error('Failed to update project');
     }
-  }
+  };
+
+  const handleDeleteProject = async (projectId) => {
+    if (!window.confirm('Are you sure you want to delete this project?')) {
+      return;
+    }
+
+    try {
+      const success = await projectService.delete(projectId);
+      if (success) {
+        setProjects(prev => (prev || []).filter(project => project.Id !== projectId));
+        toast.success('Project deleted successfully');
+      }
+    } catch (err) {
+      console.error('Error deleting project:', err);
+      setError('Failed to delete project. Please try again.');
+      toast.error('Failed to delete project');
+    }
+  };
 
   const getStatusColor = (status) => {
-    const colors = {
-      'planning': 'bg-blue-100 text-blue-800',
-      'in progress': 'bg-yellow-100 text-yellow-800',
-      'completed': 'bg-green-100 text-green-800',
-      'on hold': 'bg-orange-100 text-orange-800',
-      'cancelled': 'bg-red-100 text-red-800'
+    switch (status) {
+      case 'In Progress': return 'bg-green-100 text-green-800';
+      case 'On Hold': return 'bg-yellow-100 text-yellow-800';
+      case 'Completed': return 'bg-blue-100 text-blue-800';
+      case 'Cancelled': return 'bg-red-100 text-red-800';
+      case 'Not Started': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
-    return colors[status] || 'bg-gray-100 text-gray-800'
-  }
+  };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Not set'
-    return new Date(dateString).toLocaleDateString()
-  }
+  const openCreateModal = () => {
+    setEditingProject(null);
+    setIsCreateModalOpen(true);
+  };
 
-  const openModal = (mode, project = null) => {
-    setModalMode(mode)
-    if (mode === 'edit' && project) {
-      setFormData({
-        name: project.name,
-        description: project.description,
-        start_date: project.start_date || '',
-        end_date: project.end_date || '',
-        status: project.status,
-        assigned_users: project.assigned_users || []
-      })
-    } else {
-      setFormData({
-        name: '',
-        description: '',
-        start_date: '',
-        end_date: '',
-        status: 'planning',
-        assigned_users: []
-      })
-    }
-    setIsModalOpen(true)
-  }
+  const openEditModal = (project) => {
+    setEditingProject(project);
+    setIsCreateModalOpen(true);
+  };
 
   const closeModal = () => {
-    setIsModalOpen(false)
-    setFormData({
-      name: '',
-      description: '',
-      start_date: '',
-      end_date: '',
-      status: 'planning',
-      assigned_users: []
-    })
-  }
+    setEditingProject(null);
+    setIsCreateModalOpen(false);
+  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-
-    try {
-      if (modalMode === 'create') {
-        await projectService.create(formData)
-        toast.success('Project created successfully!')
-      } else {
-        await projectService.update(selectedProject.id, formData)
-        toast.success('Project updated successfully!')
-      }
-      
-      closeModal()
-      loadProjects()
-      
-      // Refresh selected project if it was being edited
-      if (modalMode === 'edit' && selectedProject) {
-        const updatedProject = await projectService.getById(selectedProject.id)
-        setSelectedProject(updatedProject)
-      }
-    } catch (err) {
-      toast.error(err.message || 'Operation failed')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleDelete = async (project) => {
-    if (window.confirm(`Are you sure you want to delete "${project.name}"?`)) {
-      setLoading(true)
-      try {
-        await projectService.delete(project.id)
-        toast.success('Project deleted successfully!')
-        loadProjects()
-        if (selectedProject && selectedProject.id === project.id) {
-          setSelectedProject(null)
-        }
-      } catch (err) {
-        toast.error(err.message || 'Failed to delete project')
-      } finally {
-        setLoading(false)
-      }
-    }
-  }
-
-  const handleRowClick = async (project) => {
-    try {
-      const projectDetails = await projectService.getById(project.id)
-      setSelectedProject(projectDetails)
-    } catch (err) {
-      toast.error('Failed to load project details')
-    }
-  }
-
-  if (loading && projects.length === 0) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="min-h-screen bg-surface-50 dark:bg-surface-900">
+        <AppHeader />
+        <div className="flex items-center justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
       </div>
-    )
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-surface-50 dark:bg-surface-900">
+        <AppHeader />
+        <div className="p-8">
+          <div className="text-center text-red-600 dark:text-red-400">
+            {error}
+            <button
+              onClick={loadProjects}
+              className="mt-4 px-4 py-2 bg-primary text-white rounded hover:bg-primary-dark"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-surface-900 dark:text-white">Projects</h1>
-          <p className="text-surface-600 dark:text-surface-400 mt-2">
-            Manage and track your projects
-          </p>
+    <div className="min-h-screen bg-surface-50 dark:bg-surface-900">
+      <AppHeader />
+      
+      <div className="p-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+          <h1 className="text-3xl font-bold text-surface-900 dark:text-surface-100 mb-4 sm:mb-0">
+            Projects
+          </h1>
+          <Button
+            onClick={openCreateModal}
+            className="flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            New Project
+          </Button>
         </div>
-<Button
-          onClick={() => openModal('create')}
-          className="flex items-center gap-2"
-          disabled={loading}
-          title="Create a new project"
-          aria-label="Create new project"
-        >
-          <Plus size={20} />
-          Add Project
-        </Button>
-      </div>
 
-      {/* Filters and Search */}
-      <Card className="p-6 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
+        {/* Search and Filters */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-surface-400" size={20} />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-surface-400 w-4 h-4" />
               <Input
                 type="text"
                 placeholder="Search projects..."
@@ -233,377 +200,288 @@ const Projects = () => {
               />
             </div>
           </div>
-          <div className="flex gap-4">
-            <Select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="min-w-[150px]"
+          <div className="flex gap-2">
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="px-3 py-2 border border-surface-300 rounded-md bg-white dark:bg-surface-800 dark:border-surface-600"
             >
-              <option value="all">All Status</option>
-              <option value="planning">Planning</option>
-              <option value="in progress">In Progress</option>
-              <option value="completed">Completed</option>
-              <option value="on hold">On Hold</option>
-              <option value="cancelled">Cancelled</option>
-            </Select>
+              <option value="">All Status</option>
+              <option value="Not Started">Not Started</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+              <option value="On Hold">On Hold</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
           </div>
         </div>
-      </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Projects List */}
-        <div className="lg:col-span-2">
-          <Card className="overflow-hidden">
-            {error && (
-              <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
-                {error}
-              </div>
-            )}
-            
-            {filteredProjects.length === 0 ? (
-              <div className="p-8 text-center text-surface-500">
-                {searchTerm || statusFilter !== 'all' 
-                  ? 'No projects match your filters' 
-                  : 'No projects yet. Create your first project!'}
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-<thead className="bg-surface-50 dark:bg-surface-800">
-                    <tr>
-                      <th 
-                        className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-700"
-                        onClick={() => handleSort('name')}
-                        title="Click to sort by project name"
-                        tabIndex="0"
-                        onKeyDown={(e) => e.key === 'Enter' && handleSort('name')}
-                        role="button"
-                        aria-label="Sort by project name"
-                      >
-                        <div className="flex items-center gap-2">
-                          Name
-                          <ArrowUpDown size={14} />
-                        </div>
-                      </th>
-                      <th 
-                        className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-700"
-                        onClick={() => handleSort('status')}
-                        title="Click to sort by project status"
-                        tabIndex="0"
-                        onKeyDown={(e) => e.key === 'Enter' && handleSort('status')}
-                        role="button"
-                        aria-label="Sort by project status"
-                      >
-                        <div className="flex items-center gap-2">
-                          Status
-                          <ArrowUpDown size={14} />
-                        </div>
-                      </th>
-                      <th 
-                        className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-700"
-                        onClick={() => handleSort('start_date')}
-                        title="Click to sort by start date"
-                        tabIndex="0"
-                        onKeyDown={(e) => e.key === 'Enter' && handleSort('start_date')}
-                        role="button"
-                        aria-label="Sort by start date"
-                      >
-                        <div className="flex items-center gap-2">
-                          Start Date
-                          <ArrowUpDown size={14} />
-                        </div>
-                      </th>
-                      <th 
-                        className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-700"
-                        onClick={() => handleSort('end_date')}
-                        title="Click to sort by end date"
-                        tabIndex="0"
-                        onKeyDown={(e) => e.key === 'Enter' && handleSort('end_date')}
-                        role="button"
-                        aria-label="Sort by end date"
-                      >
-                        <div className="flex items-center gap-2">
-                          End Date
-                          <ArrowUpDown size={14} />
-                        </div>
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-surface-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-<tbody className="bg-white dark:bg-surface-900 divide-y divide-surface-200 dark:divide-surface-700">
-                    {filteredProjects.map((project) => (
-                      <tr
-                        key={project.id}
-                        className="hover:bg-surface-50 dark:hover:bg-surface-800 cursor-pointer"
-                        onClick={() => handleRowClick(project)}
-                        tabIndex="0"
-                        onKeyDown={(e) => e.key === 'Enter' && handleRowClick(project)}
-                        role="button"
-                        aria-label={`View details for ${project.name}`}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="font-medium text-surface-900 dark:text-white">
-                            {project.name}
-                          </div>
-                          <div className="text-sm text-surface-500 truncate max-w-xs">
-                            {project.description}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge className={getStatusColor(project.status)}>
-                            {project.status}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-surface-500">
-                          {formatDate(project.start_date)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-surface-500">
-                          {formatDate(project.end_date)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                openModal('edit', project)
-                                setSelectedProject(project)
-                              }}
-                              className="text-indigo-600 hover:text-indigo-900 p-1 rounded"
-                              title="Edit project"
-                              aria-label={`Edit ${project.name}`}
-                            >
-                              <Edit2 size={16} />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleDelete(project)
-                              }}
-                              className="text-red-600 hover:text-red-900 p-1 rounded"
-                              title="Delete project"
-                              aria-label={`Delete ${project.name}`}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
-        </div>
-
-        {/* Project Details */}
-        <div>
-          {selectedProject ? (
-            <Card className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-semibold text-surface-900 dark:text-white">
-                  Project Details
-                </h3>
-                <button
-                  onClick={() => setSelectedProject(null)}
-                  className="text-surface-400 hover:text-surface-600"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-medium text-surface-900 dark:text-white">
-                    {selectedProject.name}
-                  </h4>
-                  <Badge className={getStatusColor(selectedProject.status)}>
-                    {selectedProject.status}
-                  </Badge>
-                </div>
-                
-                <div>
-                  <Label className="text-sm text-surface-600 dark:text-surface-400">
-                    Description
-                  </Label>
-                  <p className="text-surface-900 dark:text-white mt-1">
-                    {selectedProject.description || 'No description provided'}
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-sm text-surface-600 dark:text-surface-400">
-                      Start Date
-                    </Label>
-                    <p className="text-surface-900 dark:text-white">
-                      {formatDate(selectedProject.start_date)}
-                    </p>
-                  </div>
-                  <div>
-                    <Label className="text-sm text-surface-600 dark:text-surface-400">
-                      End Date
-                    </Label>
-                    <p className="text-surface-900 dark:text-white">
-                      {formatDate(selectedProject.end_date)}
-                    </p>
-                  </div>
-                </div>
-                
-                <div>
-                  <Label className="text-sm text-surface-600 dark:text-surface-400">
-                    Assigned Users ({selectedProject.assigned_users?.length || 0})
-                  </Label>
-                  <div className="mt-2">
-                    {selectedProject.assigned_users?.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {selectedProject.assigned_users.map((userId, index) => (
-                          <Badge key={index} className="bg-blue-100 text-blue-800">
-                            {userId}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-surface-500">No users assigned</p>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex gap-2 pt-4">
-                  <Button
-                    onClick={() => openModal('edit', selectedProject)}
-                    variant="secondary"
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <Edit2 size={16} />
-                    Edit
-                  </Button>
-                  <Button
-                    onClick={() => handleDelete(selectedProject)}
-                    variant="danger"
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <Trash2 size={16} />
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ) : (
-            <Card className="p-6">
-              <div className="text-center text-surface-500">
-                <Users size={48} className="mx-auto mb-4 opacity-50" />
-                <p>Select a project to view details</p>
-              </div>
-            </Card>
-          )}
-        </div>
+        {/* Projects Grid */}
+        {filteredProjects?.length === 0 ? (
+          <div className="text-center py-12">
+            <BarChart3 className="w-12 h-12 text-surface-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-surface-900 dark:text-surface-100 mb-2">
+              No projects found
+            </h3>
+            <p className="text-surface-600 dark:text-surface-400 mb-4">
+              {searchTerm || selectedStatus 
+                ? "Try adjusting your search or filters" 
+                : "Get started by creating your first project"}
+            </p>
+            <Button onClick={openCreateModal}>
+              Create Project
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProjects?.map((project) => (
+              <ProjectCard
+                key={project.Id}
+                project={project}
+                onEdit={() => openEditModal(project)}
+                onDelete={() => handleDeleteProject(project.Id)}
+                getStatusColor={getStatusColor}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <Card className="w-full max-w-md p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-surface-900 dark:text-white">
-                {modalMode === 'create' ? 'Create Project' : 'Edit Project'}
-              </h3>
-              <button
-                onClick={closeModal}
-                className="text-surface-400 hover:text-surface-600"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="name">Project Name *</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  placeholder="Enter project name"
-                  required
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  placeholder="Enter project description"
-                  rows="3"
-                  className="w-full px-3 py-2 border border-surface-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="start_date">Start Date</Label>
-                  <Input
-                    id="start_date"
-                    type="date"
-                    value={formData.start_date}
-                    onChange={(e) => setFormData({...formData, start_date: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="end_date">End Date</Label>
-                  <Input
-                    id="end_date"
-                    type="date"
-                    value={formData.end_date}
-                    onChange={(e) => setFormData({...formData, end_date: e.target.value})}
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  id="status"
-                  value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value})}
-                >
-                  <option value="planning">Planning</option>
-                  <option value="in progress">In Progress</option>
-                  <option value="completed">Completed</option>
-                  <option value="on hold">On Hold</option>
-                  <option value="cancelled">Cancelled</option>
-                </Select>
-              </div>
-              
-              <div className="flex gap-3 pt-4">
-                <Button
-                  type="submit"
-                  disabled={loading || !formData.name.trim()}
-                  className="flex-1"
-                >
-                  {loading ? 'Saving...' : modalMode === 'create' ? 'Create Project' : 'Update Project'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={closeModal}
-                  disabled={loading}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
+      {/* Project Form Modal */}
+      {isCreateModalOpen && (
+        <ProjectFormModal
+          project={editingProject}
+          onSubmit={editingProject ? handleUpdateProject : handleCreateProject}
+          onClose={closeModal}
+        />
       )}
-</div>
-  )
-}
+    </div>
+  );
+};
 
-export default Projects
+// Project Card Component
+const ProjectCard = ({ project, onEdit, onDelete, getStatusColor }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -5 }}
+      className="bg-white dark:bg-surface-800 rounded-lg shadow-card hover:shadow-lg transition-all duration-200"
+    >
+      <Card className="p-6 h-full">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-2">
+              {project?.ProjectName || project?.Name}
+            </h3>
+            <Badge className={getStatusColor(project?.Status)}>
+              {project?.Status}
+            </Badge>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={onEdit}
+              className="p-2 text-surface-600 hover:text-primary hover:bg-surface-100 rounded-md transition-colors"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onDelete}
+              className="p-2 text-surface-600 hover:text-red-600 hover:bg-surface-100 rounded-md transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <p className="text-surface-600 dark:text-surface-400 text-sm mb-4 line-clamp-2">
+          {project?.Description || 'No description provided'}
+        </p>
+
+        <div className="space-y-2 text-sm">
+          {project?.StartDate && (
+            <div className="flex items-center gap-2 text-surface-600 dark:text-surface-400">
+              <Calendar className="w-4 h-4" />
+              <span>Start: {new Date(project.StartDate).toLocaleDateString()}</span>
+            </div>
+          )}
+          
+          {project?.EndDate && (
+            <div className="flex items-center gap-2 text-surface-600 dark:text-surface-400">
+              <Calendar className="w-4 h-4" />
+              <span>End: {new Date(project.EndDate).toLocaleDateString()}</span>
+            </div>
+          )}
+
+          {project?.AssignedTeamMembers && (
+            <div className="flex items-center gap-2 text-surface-600 dark:text-surface-400">
+              <Users className="w-4 h-4" />
+              <span>Team Members</span>
+            </div>
+          )}
+        </div>
+      </Card>
+    </motion.div>
+  );
+};
+
+// Project Form Modal Component
+const ProjectFormModal = ({ project, onSubmit, onClose }) => {
+  const [formData, setFormData] = useState({
+    ProjectName: project?.ProjectName || '',
+    Description: project?.Description || '',
+    StartDate: project?.StartDate || '',
+    EndDate: project?.EndDate || '',
+    Status: project?.Status || 'Not Started',
+    Tags: project?.Tags || '',
+    Owner: project?.Owner || '',
+    AssignedTeamMembers: project?.AssignedTeamMembers || ''
+  });
+
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try {
+      await onSubmit(formData);
+    } catch (error) {
+      console.error('Error submitting project:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white dark:bg-surface-800 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto"
+      >
+        <div className="p-6">
+          <h2 className="text-xl font-semibold text-surface-900 dark:text-surface-100 mb-4">
+            {project ? 'Edit Project' : 'Create Project'}
+          </h2>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                Project Name *
+              </label>
+              <Input
+                type="text"
+                name="ProjectName"
+                value={formData.ProjectName}
+                onChange={handleChange}
+                required
+                placeholder="Enter project name"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                Description
+              </label>
+              <textarea
+                name="Description"
+                value={formData.Description}
+                onChange={handleChange}
+                rows="3"
+                placeholder="Enter project description"
+                className="w-full px-3 py-2 border border-surface-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-surface-700 dark:border-surface-600"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                  Start Date
+                </label>
+                <Input
+                  type="date"
+                  name="StartDate"
+                  value={formData.StartDate}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                  End Date
+                </label>
+                <Input
+                  type="date"
+                  name="EndDate"
+                  value={formData.EndDate}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                Status
+              </label>
+              <select
+                name="Status"
+                value={formData.Status}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-surface-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary dark:bg-surface-700 dark:border-surface-600"
+              >
+                <option value="Not Started">Not Started</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+                <option value="On Hold">On Hold</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
+                Tags
+              </label>
+              <Input
+                type="text"
+                name="Tags"
+                value={formData.Tags}
+                onChange={handleChange}
+                placeholder="Enter tags (comma separated)"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={onClose}
+                disabled={loading}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={loading || !formData.ProjectName.trim()}
+                className="flex-1"
+              >
+                {loading ? 'Saving...' : (project ? 'Update' : 'Create')}
+              </Button>
+            </div>
+          </form>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+export default Projects;

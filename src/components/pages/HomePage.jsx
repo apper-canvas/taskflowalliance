@@ -1,42 +1,40 @@
-import { useState, useEffect } from 'react'
-import { useSelector } from 'react-redux'
-import { toast } from 'react-toastify'
-import { format } from 'date-fns'
-import { 
-  Home, 
-  CheckSquare, 
-  Folder,
-  Plus, 
-  Search, 
-  Filter,
-} from 'lucide-react'
-import CategoryFilterItem from '@/components/molecules/CategoryFilterItem'
-import Button from '@/components/atoms/Button'
-import Text from '@/components/atoms/Text'
-import TaskFilters from '@/components/organisms/TaskFilters'
-import TaskList from '@/components/organisms/TaskList'
-import EmptyState from '@/components/organisms/EmptyState'
-import TaskFormModal from '@/components/organisms/TaskFormModal'
-import Card from '@/components/atoms/Card'
-import AppHeader from '@/components/organisms/AppHeader'
-import TaskStatsCard from '@/components/organisms/TaskStatsCard'
-import QuickActions from '../organisms/QuickActions'
-import taskService from '../../services/api/taskService'
-import categoryService from '../../services/api/categoryService'
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { toast } from 'react-toastify';
+import { format } from 'date-fns';
+import AppHeader from '../organisms/AppHeader';
+import TaskStatsCard from '../organisms/TaskStatsCard';
+import QuickActions from '../organisms/QuickActions';
+import TaskList from '../organisms/TaskList';
+import TaskFilters from '../organisms/TaskFilters';
+import TaskFormModal from '../organisms/TaskFormModal';
+import EmptyState from '../organisms/EmptyState';
+import Card from '../atoms/Card';
+import Text from '../atoms/Text';
+import Button from '../atoms/Button';
+import CategoryFilterItem from '../molecules/CategoryFilterItem';
+import { taskService } from '../../services/api/taskService';
+import { categoryService } from '../../services/api/categoryService';
 const HomePage = () => {
-  const [darkMode, setDarkMode] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [filteredTasks, setFilteredTasks] = useState([]);
+  const [selectedFilters, setSelectedFilters] = useState({
+    status: '',
+    priority: '',
+    category: ''
+  });
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [darkMode, setDarkMode] = useState(false);
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showArchived, setShowArchived] = useState(false);
-
-const [newTask, setNewTask] = useState({
+  const [newTask, setNewTask] = useState({
     title: '',
     description: '',
     priority: 'medium',
@@ -44,104 +42,171 @@ const [newTask, setNewTask] = useState({
     dueDate: '',
   });
 
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
-    setDarkMode(savedDarkMode);
-    document.documentElement.classList.toggle('dark', savedDarkMode);
-  }, []);
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+  };
 
+  // Load tasks and categories
   useEffect(() => {
     loadData();
   }, []);
 
-  const toggleDarkMode = () => {
-    const newDarkMode = !darkMode;
-    setDarkMode(newDarkMode);
-    localStorage.setItem('darkMode', newDarkMode);
-    document.documentElement.classList.toggle('dark', newDarkMode);
-  };
-
   const loadData = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
+      setError(null);
+      
       const [tasksData, categoriesData] = await Promise.all([
         taskService.getAll(),
-        categoryService.getAll(),
+        categoryService.getAll()
       ]);
+      
       setTasks(tasksData || []);
       setCategories(categoriesData || []);
+      setFilteredTasks(tasksData || []);
     } catch (err) {
-      setError(err.message);
+      console.error('Error loading data:', err);
+      setError('Failed to load data. Please try again.');
       toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
-};
+  };
 
-const handleCreateTask = async () => {
+// Filter tasks based on selected filters
+  useEffect(() => {
+    let filtered = [...(tasks || [])];
+
+    if (selectedFilters.status) {
+      filtered = filtered.filter(task => task?.status === selectedFilters.status);
+    }
+
+    if (selectedFilters.priority) {
+      filtered = filtered.filter(task => task?.priority === selectedFilters.priority);
+    }
+
+    if (selectedFilters.category) {
+      filtered = filtered.filter(task => task?.category === selectedFilters.category);
+    }
+
+    setFilteredTasks(filtered);
+  }, [tasks, selectedFilters]);
+
+const handleCreateTask = async (taskData) => {
     try {
-      const taskData = {
-        ...newTask,
-        status: newTask.status || 'todo', // Ensure status is set
-        isArchived: newTask.isArchived || false, // Ensure isArchived is set
-      };
-      if (editingTask) {
-        const updatedTask = await taskService.update(editingTask.id, taskData);
-        setTasks((prev) =>
-          prev.map((task) => (task.id === editingTask.id ? updatedTask : task))
-        );
-        toast.success('Task updated successfully');
-      } else {
-        const createdTask = await taskService.create(taskData);
-        setTasks((prev) => [createdTask, ...prev]);
+      const createdTask = await taskService.create(taskData);
+      if (createdTask) {
+        setTasks(prev => [createdTask, ...(prev || [])]);
+        setShowTaskForm(false);
+        resetForm();
         toast.success('Task created successfully');
       }
-
-      resetForm();
     } catch (err) {
-      toast.error('Failed to save task');
+      console.error('Error creating task:', err);
+      setError('Failed to create task. Please try again.');
+      toast.error('Failed to create task');
     }
   };
 
-  const handleUpdateTaskStatus = async (taskId, newStatus) => {
+const handleUpdateTask = async (taskData) => {
     try {
-      const updateData = {
-        status: newStatus,
-        ...(newStatus === 'completed' ? { completedAt: new Date().toISOString() } : {}),
-      };
-      const updatedTask = await taskService.update(taskId, updateData);
-      setTasks((prev) =>
-        prev.map((task) => (task.id === taskId ? updatedTask : task))
-      );
-      toast.success(`Task ${newStatus === 'completed' ? 'completed' : 'updated'}`);
+      if (!editingTask?.id) return;
+      
+      const updatedTask = await taskService.update(editingTask.id, taskData);
+      if (updatedTask) {
+        setTasks(prev => (prev || []).map(task => 
+          task.id === editingTask.id ? updatedTask : task
+        ));
+        setEditingTask(null);
+        setShowTaskForm(false);
+        resetForm();
+        toast.success('Task updated successfully');
+      }
     } catch (err) {
-      toast.error('Failed to update task status');
+      console.error('Error updating task:', err);
+      setError('Failed to update task. Please try again.');
+      toast.error('Failed to update task');
     }
   };
 
-  const handleDeleteTask = async (taskId) => {
+const handleDeleteTask = async (taskId) => {
+    if (!window.confirm('Are you sure you want to delete this task?')) {
+      return;
+    }
+    
     try {
-      await taskService.delete(taskId);
-      setTasks((prev) => prev.filter((task) => task.id !== taskId));
-      toast.success('Task deleted successfully');
+      const success = await taskService.delete(taskId);
+      if (success) {
+        setTasks(prev => (prev || []).filter(task => task.id !== taskId));
+        toast.success('Task deleted successfully');
+      }
     } catch (err) {
+      console.error('Error deleting task:', err);
+      setError('Failed to delete task. Please try again.');
       toast.error('Failed to delete task');
+    }
+  };
+
+const handleUpdateTaskStatus = async (taskId, newStatus) => {
+    try {
+      const task = tasks?.find(t => t.id === taskId);
+      if (!task) return;
+
+      const updateData = {
+        ...task,
+        status: newStatus,
+        completedAt: newStatus === 'completed' ? new Date().toISOString() : null
+      };
+
+      const updatedTask = await taskService.update(taskId, updateData);
+      if (updatedTask) {
+        setTasks(prev => (prev || []).map(t => 
+          t.id === taskId ? updatedTask : t
+        ));
+        toast.success(`Task status updated to ${newStatus}`);
+      }
+    } catch (err) {
+      console.error('Error updating task status:', err);
+      setError('Failed to update task status. Please try again.');
+      toast.error('Failed to update task status');
     }
   };
 
   const handleArchiveTask = async (taskId, archive = true) => {
     try {
-      const updatedTask = await taskService.update(taskId, { isArchived: archive });
-      setTasks((prev) =>
-        prev.map((task) => (task.id === taskId ? updatedTask : task))
-      );
-      toast.success(`Task ${archive ? 'archived' : 'restored'}`);
+      const task = tasks?.find(t => t.id === taskId);
+      if (!task) return;
+
+      const updateData = {
+        ...task,
+        isArchived: archive
+      };
+
+      const updatedTask = await taskService.update(taskId, updateData);
+      if (updatedTask) {
+        setTasks(prev => (prev || []).map(t => 
+          t.id === taskId ? updatedTask : t
+        ));
+        toast.success(`Task ${archive ? 'archived' : 'restored'} successfully`);
+      }
     } catch (err) {
+      console.error('Error archiving task:', err);
+      setError(`Failed to ${archive ? 'archive' : 'restore'} task. Please try again.`);
       toast.error(`Failed to ${archive ? 'archive' : 'restore'} task`);
     }
   };
 
-  const resetForm = () => {
+const openTaskModal = (task = null) => {
+    setEditingTask(task);
+    setIsTaskModalOpen(true);
+  };
+
+  const closeTaskModal = () => {
+    setEditingTask(null);
+    setIsTaskModalOpen(false);
+  };
+
+const resetForm = () => {
     setNewTask({
       title: '',
       description: '',
@@ -151,6 +216,7 @@ const handleCreateTask = async () => {
     });
     setShowTaskForm(false);
     setEditingTask(null);
+  };
   };
 
   const startEditTask = (task) => {
@@ -180,10 +246,10 @@ const handleCreateTask = async () => {
     } catch (err) {
       toast.error('Failed to duplicate task');
     }
-  };
+};
 
-  const filteredTasks =
-    tasks?.filter((task) => {
+  const getFilteredTasks = () => {
+    return tasks?.filter((task) => {
       if (showArchived !== task.isArchived) return false;
       if (selectedCategory !== 'all' && task.category !== selectedCategory) return false;
       if (selectedStatus !== 'all' && task.status !== selectedStatus) return false;
@@ -195,6 +261,9 @@ const handleCreateTask = async () => {
         return false;
       return true;
     }) || [];
+  };
+
+  const finalFilteredTasks = getFilteredTasks();
 
   const getTaskStats = () => {
     const activeTasks = tasks?.filter((task) => !task.isArchived) || [];
@@ -282,15 +351,15 @@ const handleCreateTask = async () => {
               setSelectedStatus={setSelectedStatus}
             />
 
-            {filteredTasks.length === 0 ? (
+{finalFilteredTasks.length === 0 ? (
               <EmptyState
                 type={showArchived ? 'archived' : 'active'}
                 searchQuery={searchQuery}
                 onCreateTask={() => setShowTaskForm(true)}
               />
             ) : (
-              <TaskList
-                filteredTasks={filteredTasks}
+<TaskList
+                filteredTasks={finalFilteredTasks}
                 showArchived={showArchived}
                 categories={categories}
                 handleUpdateTaskStatus={handleUpdateTaskStatus}

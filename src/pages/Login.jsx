@@ -1,17 +1,18 @@
-import { useEffect, useContext } from 'react'
-import { Link } from 'react-router-dom'
-import { AuthContext } from '../App'
+import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { useContext } from 'react';
+import { AuthContext } from '../App';
 
 function Login() {
-  const { isInitialized } = useContext(AuthContext)
+  const { isInitialized } = useContext(AuthContext);
 
   useEffect(() => {
     if (isInitialized) {
       // Show login UI in this component
-      const { ApperUI } = window.ApperSDK
-      ApperUI.showLogin("#authentication")
+      const { ApperUI } = window.ApperSDK;
+      ApperUI.showLogin("#authentication");
     }
-  }, [isInitialized])
+  }, [isInitialized]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface-50 dark:bg-surface-900">
@@ -31,7 +32,7 @@ function Login() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default Login
+export default Login;

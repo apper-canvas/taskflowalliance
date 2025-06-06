@@ -1,210 +1,261 @@
-import projectsData from '../mockData/projects.json'
+// ApperClient service for projects with database operations
+import { toast } from 'react-toastify';
 
-// Helper function for realistic API delays
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+// Initialize ApperClient
+const initApperClient = () => {
+  const { ApperClient } = window.ApperSDK;
+  return new ApperClient({
+    apperProjectId: import.meta.env.VITE_APPER_PROJECT_ID,
+    apperPublicKey: import.meta.env.VITE_APPER_PUBLIC_KEY
+  });
+};
 
-// In-memory data store (persists during session)
-let projects = [...projectsData]
-
-// Generate new ID for created projects
-const generateId = () => {
-  const maxId = projects.reduce((max, project) => Math.max(max, project.id), 0)
-  return maxId + 1
-}
-
-// Validate project data
-const validateProject = (project) => {
-  const errors = []
-  
-  if (!project.name || project.name.trim().length === 0) {
-    errors.push('Project name is required')
-  }
-  
-  if (project.start_date && !isValidDate(project.start_date)) {
-    errors.push('Start date must be in YYYY-MM-DD format')
-  }
-  
-  if (project.end_date && !isValidDate(project.end_date)) {
-    errors.push('End date must be in YYYY-MM-DD format')
-  }
-  
-  if (project.start_date && project.end_date && new Date(project.start_date) > new Date(project.end_date)) {
-    errors.push('End date must be after start date')
-  }
-  
-  const validStatuses = ['planning', 'in progress', 'completed', 'on hold', 'cancelled']
-  if (project.status && !validStatuses.includes(project.status)) {
-    errors.push('Status must be one of: planning, in progress, completed, on hold, cancelled')
-  }
-  
-  if (project.assigned_users && !Array.isArray(project.assigned_users)) {
-    errors.push('Assigned users must be an array')
-  }
-  
-  return errors
-}
-
-// Helper function to validate date format
-const isValidDate = (dateString) => {
-  const regex = /^\d{4}-\d{2}-\d{2}$/
-  if (!regex.test(dateString)) return false
-  const date = new Date(dateString)
-  return date instanceof Date && !isNaN(date)
-}
-
-// Service methods
-const projectService = {
-  // Get all projects with optional filtering and sorting
-  async getAll(params = {}) {
-    await delay(300)
-    
+export const projectService = {
+  // Get all projects
+  getAll: async (params = {}) => {
     try {
-      let filteredProjects = [...projects]
+      const apperClient = initApperClient();
+      const tableName = 'Project';
       
-      // Apply status filter
-      if (params.status && params.status !== 'all') {
-        filteredProjects = filteredProjects.filter(project => project.status === params.status)
+      // Include all fields for display
+      const queryParams = {
+        fields: ['Id', 'Name', 'Tags', 'Owner', 'CreatedOn', 'CreatedBy', 'ModifiedOn', 'ModifiedBy', 
+                'ProjectName', 'Description', 'StartDate', 'EndDate', 'Status', 'AssignedTeamMembers'],
+        orderBy: [
+          {
+            fieldName: 'CreatedOn',
+            SortType: 'DESC'
+          }
+        ],
+        pagingInfo: {
+          limit: params.limit || 50,
+          offset: params.offset || 0
+        },
+        ...params
+      };
+
+      const response = await apperClient.fetchRecords(tableName, queryParams);
+      
+      if (!response?.data) {
+        return [];
       }
       
-      // Apply search filter
-      if (params.search) {
-        const searchTerm = params.search.toLowerCase()
-        filteredProjects = filteredProjects.filter(project =>
-          project.name.toLowerCase().includes(searchTerm) ||
-          project.description.toLowerCase().includes(searchTerm)
-        )
-      }
-      
-      // Apply sorting
-      if (params.sortBy) {
-        filteredProjects.sort((a, b) => {
-          let aValue = a[params.sortBy]
-          let bValue = b[params.sortBy]
-          
-          // Handle null values
-          if (aValue === null && bValue === null) return 0
-          if (aValue === null) return 1
-          if (bValue === null) return -1
-          
-          // Handle date sorting
-          if (params.sortBy === 'start_date' || params.sortBy === 'end_date') {
-            aValue = new Date(aValue)
-            bValue = new Date(bValue)
-          }
-          
-          // Handle string sorting
-          if (typeof aValue === 'string') {
-            aValue = aValue.toLowerCase()
-            bValue = bValue.toLowerCase()
-          }
-          
-          if (params.sortOrder === 'desc') {
-            return bValue > aValue ? 1 : bValue < aValue ? -1 : 0
-          } else {
-            return aValue > bValue ? 1 : aValue < bValue ? -1 : 0
-          }
-        })
-      }
-      
-      return filteredProjects
+      return response.data;
     } catch (error) {
-      console.error('Error fetching projects:', error)
-      throw new Error('Failed to fetch projects')
+      console.error('Error fetching projects:', error);
+      toast.error('Failed to load projects');
+      return [];
     }
   },
 
   // Get project by ID
-  async getById(id) {
-    await delay(200)
-    
+  getById: async (id) => {
     try {
-      const project = projects.find(p => p.id === parseInt(id))
-      if (!project) {
-        throw new Error('Project not found')
+      const apperClient = initApperClient();
+      const tableName = 'Project';
+      
+      const params = {
+        fields: ['Id', 'Name', 'Tags', 'Owner', 'CreatedOn', 'CreatedBy', 'ModifiedOn', 'ModifiedBy', 
+                'ProjectName', 'Description', 'StartDate', 'EndDate', 'Status', 'AssignedTeamMembers']
+      };
+
+      const response = await apperClient.getRecordById(tableName, id, params);
+      
+      if (!response?.data) {
+        return null;
       }
-      return { ...project }
+      
+      return response.data;
     } catch (error) {
-      console.error(`Error fetching project with ID ${id}:`, error)
-      throw error
+      console.error(`Error fetching project with ID ${id}:`, error);
+      toast.error('Failed to load project');
+      return null;
     }
   },
 
   // Create new project
-  async create(projectData) {
-    await delay(400)
-    
+  create: async (projectData) => {
     try {
-      // Validate project data
-      const validationErrors = validateProject(projectData)
-      if (validationErrors.length > 0) {
-        throw new Error(validationErrors.join(', '))
-      }
+      const apperClient = initApperClient();
+      const tableName = 'Project';
       
-      const newProject = {
-        id: generateId(),
-        name: projectData.name.trim(),
-        description: projectData.description || '',
-        start_date: projectData.start_date || null,
-        end_date: projectData.end_date || null,
-        status: projectData.status || 'planning',
-        assigned_users: projectData.assigned_users || []
-      }
+      // Only include Updateable fields
+      const params = {
+        records: [
+          {
+            Name: projectData.Name || projectData.ProjectName,
+            Tags: projectData.Tags,
+            Owner: projectData.Owner,
+            ProjectName: projectData.ProjectName,
+            Description: projectData.Description,
+            StartDate: projectData.StartDate,
+            EndDate: projectData.EndDate,
+            Status: projectData.Status || 'Not Started',
+            AssignedTeamMembers: projectData.AssignedTeamMembers
+          }
+        ]
+      };
+
+      const response = await apperClient.createRecord(tableName, params);
       
-      projects.push(newProject)
-      return { ...newProject }
+      if (response?.success && response.results?.[0]?.success) {
+        toast.success('Project created successfully');
+        return response.results[0].data;
+      } else {
+        const error = response.results?.[0]?.errors?.[0]?.message || 'Failed to create project';
+        toast.error(error);
+        throw new Error(error);
+      }
     } catch (error) {
-      console.error('Error creating project:', error)
-      throw error
+      console.error('Error creating project:', error);
+      toast.error(error.message || 'Failed to create project');
+      throw error;
     }
   },
 
   // Update existing project
-  async update(id, projectData) {
-    await delay(350)
-    
+  update: async (id, projectData) => {
     try {
-      const projectIndex = projects.findIndex(p => p.id === parseInt(id))
-      if (projectIndex === -1) {
-        throw new Error('Project not found')
-      }
+      const apperClient = initApperClient();
+      const tableName = 'Project';
       
-      // Validate updated project data
-      const validationErrors = validateProject(projectData)
-      if (validationErrors.length > 0) {
-        throw new Error(validationErrors.join(', '))
-      }
+      // Only include Updateable fields plus Id
+      const params = {
+        records: [
+          {
+            Id: id,
+            Name: projectData.Name || projectData.ProjectName,
+            Tags: projectData.Tags,
+            Owner: projectData.Owner,
+            ProjectName: projectData.ProjectName,
+            Description: projectData.Description,
+            StartDate: projectData.StartDate,
+            EndDate: projectData.EndDate,
+            Status: projectData.Status,
+            AssignedTeamMembers: projectData.AssignedTeamMembers
+          }
+        ]
+      };
+
+      const response = await apperClient.updateRecord(tableName, params);
       
-      const updatedProject = {
-        ...projects[projectIndex],
-        ...projectData,
-        id: parseInt(id) // Preserve ID
+      if (response?.success && response.results?.[0]?.success) {
+        toast.success('Project updated successfully');
+        return response.results[0].data;
+      } else {
+        const error = response.results?.[0]?.message || 'Failed to update project';
+        toast.error(error);
+        throw new Error(error);
       }
-      
-      projects[projectIndex] = updatedProject
-      return { ...updatedProject }
     } catch (error) {
-      console.error(`Error updating project with ID ${id}:`, error)
-      throw error
+      console.error('Error updating project:', error);
+      toast.error(error.message || 'Failed to update project');
+      throw error;
     }
   },
 
   // Delete project
-  async delete(id) {
-    await delay(250)
-    
+  delete: async (id) => {
     try {
-      const projectIndex = projects.findIndex(p => p.id === parseInt(id))
-      if (projectIndex === -1) {
-        throw new Error('Project not found')
+      const apperClient = initApperClient();
+      const tableName = 'Project';
+      
+      const params = {
+        RecordIds: [id]
+      };
+
+      const response = await apperClient.deleteRecord(tableName, params);
+      
+      if (response?.success && response.results?.[0]?.success) {
+        toast.success('Project deleted successfully');
+        return true;
+      } else {
+        const error = response.results?.[0]?.message || 'Failed to delete project';
+        toast.error(error);
+        throw new Error(error);
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      toast.error(error.message || 'Failed to delete project');
+      throw error;
+    }
+  },
+
+  // Search projects
+  search: async (query) => {
+    try {
+      const apperClient = initApperClient();
+      const tableName = 'Project';
+      
+      const queryParams = {
+        fields: ['Id', 'Name', 'Tags', 'Owner', 'CreatedOn', 'CreatedBy', 'ModifiedOn', 'ModifiedBy', 
+                'ProjectName', 'Description', 'StartDate', 'EndDate', 'Status', 'AssignedTeamMembers'],
+        where: [
+          {
+            fieldName: 'ProjectName',
+            operator: 'Contains',
+            values: [query]
+          }
+        ],
+        orderBy: [
+          {
+            fieldName: 'CreatedOn',
+            SortType: 'DESC'
+          }
+        ]
+      };
+
+      const response = await apperClient.fetchRecords(tableName, queryParams);
+      
+      if (!response?.data) {
+        return [];
       }
       
-      projects.splice(projectIndex, 1)
-      return true
+      return response.data;
     } catch (error) {
-      console.error(`Error deleting project with ID ${id}:`, error)
-      throw error
+      console.error('Error searching projects:', error);
+      toast.error('Failed to search projects');
+      return [];
+    }
+  },
+
+  // Get projects by status
+  getByStatus: async (status) => {
+    try {
+      const apperClient = initApperClient();
+      const tableName = 'Project';
+      
+      const queryParams = {
+        fields: ['Id', 'Name', 'Tags', 'Owner', 'CreatedOn', 'CreatedBy', 'ModifiedOn', 'ModifiedBy', 
+                'ProjectName', 'Description', 'StartDate', 'EndDate', 'Status', 'AssignedTeamMembers'],
+        where: [
+          {
+            fieldName: 'Status',
+            operator: 'ExactMatch',
+            values: [status]
+          }
+        ],
+        orderBy: [
+          {
+            fieldName: 'CreatedOn',
+            SortType: 'DESC'
+          }
+        ]
+      };
+
+      const response = await apperClient.fetchRecords(tableName, queryParams);
+      
+      if (!response?.data) {
+        return [];
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching projects by status:', error);
+      toast.error('Failed to load projects');
+      return [];
     }
   }
-}
+};
 
-export default projectService
+export default projectService;
