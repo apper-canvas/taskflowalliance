@@ -7,6 +7,7 @@ import Signup from './pages/Signup'
 import Callback from './pages/Callback'
 import ErrorPage from './pages/ErrorPage'
 import HomePage from './components/pages/HomePage'
+import Projects from './pages/Projects'
 import NotFound from './pages/NotFound'
 import ProtectedRoute from './components/ProtectedRoute'
 
@@ -37,10 +38,23 @@ function App() {
       view: 'both',
       onSuccess: function (user) {
         setIsInitialized(true)
-        // CRITICAL: This exact currentPath logic must be preserved in all implementations
+// CRITICAL: This exact currentPath logic must be preserved in all implementations
         // DO NOT simplify or modify this pattern as it ensures proper redirection flow
         let currentPath = window.location.pathname + window.location.search
-        let redirectPath = new URLSearchParams(window.location.search).get('redirect')
+        let redirectPath = null
+        try {
+          redirectPath = new URLSearchParams(window.location.search).get('redirect')
+        } catch (error) {
+          // Fallback for environments where URLSearchParams is not available
+          const params = window.location.search.slice(1).split('&')
+          for (const param of params) {
+            const [key, value] = param.split('=')
+            if (key === 'redirect') {
+              redirectPath = decodeURIComponent(value)
+              break
+            }
+          }
+        }
         const isAuthPage = currentPath.includes('/login') || currentPath.includes('/signup') || currentPath.includes('/callback') || currentPath.includes('/error')
         
         if (user) {
@@ -112,7 +126,7 @@ function App() {
 
   return (
     <AuthContext.Provider value={authMethods}>
-      <Routes>
+<Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/callback" element={<Callback />} />
@@ -122,6 +136,14 @@ function App() {
           element={
             <ProtectedRoute>
               <HomePage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/projects" 
+          element={
+            <ProtectedRoute>
+              <Projects />
             </ProtectedRoute>
           } 
         />

@@ -1,20 +1,28 @@
-import { useState, useEffect } from 'react';
-import { toast } from 'react-toastify';
-import { format, isToday, isTomorrow, isPast } from 'date-fns';
-import taskService from '@/services/api/taskService';
-import categoryService from '@/services/api/categoryService';
-
-import AppHeader from '@/components/organisms/AppHeader';
-import TaskStatsCard from '@/components/organisms/TaskStatsCard';
-import QuickActions from '@/components/organisms/QuickActions';
-import CategoryFilterItem from '@/components/molecules/CategoryFilterItem';
-import Button from '@/components/atoms/Button';
-import Text from '@/components/atoms/Text';
-import TaskFilters from '@/components/organisms/TaskFilters';
-import TaskList from '@/components/organisms/TaskList';
-import EmptyState from '@/components/organisms/EmptyState';
-import TaskFormModal from '@/components/organisms/TaskFormModal';
-import Card from '@/components/atoms/Card';
+import { useState, useEffect } from 'react'
+import { useSelector } from 'react-redux'
+import { toast } from 'react-toastify'
+import { format } from 'date-fns'
+import { 
+  Home, 
+  CheckSquare, 
+  Folder,
+  Plus, 
+  Search, 
+  Filter,
+} from 'lucide-react'
+import CategoryFilterItem from '@/components/molecules/CategoryFilterItem'
+import Button from '@/components/atoms/Button'
+import Text from '@/components/atoms/Text'
+import TaskFilters from '@/components/organisms/TaskFilters'
+import TaskList from '@/components/organisms/TaskList'
+import EmptyState from '@/components/organisms/EmptyState'
+import TaskFormModal from '@/components/organisms/TaskFormModal'
+import Card from '@/components/atoms/Card'
+import AppHeader from '@/components/organisms/AppHeader'
+import TaskStatsCard from '@/components/molecules/TaskStatsCard'
+import QuickActions from '@/components/molecules/QuickActions'
+import { taskService } from '@/services/taskService'
+import { categoryService } from '@/services/categoryService'
 
 const HomePage = () => {
   const [darkMode, setDarkMode] = useState(false);
@@ -29,7 +37,7 @@ const HomePage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
 
-  const [newTask, setNewTask] = useState({
+const [newTask, setNewTask] = useState({
     title: '',
     description: '',
     priority: 'medium',
@@ -38,9 +46,9 @@ const HomePage = () => {
   });
 
   useEffect(() => {
-    const isDark = localStorage.getItem('darkMode') === 'true';
-    setDarkMode(isDark);
-    document.documentElement.classList.toggle('dark', isDark);
+    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+    setDarkMode(savedDarkMode);
+    document.documentElement.classList.toggle('dark', savedDarkMode);
   }, []);
 
   useEffect(() => {
@@ -69,17 +77,12 @@ const HomePage = () => {
     } finally {
       setLoading(false);
     }
-  };
+};
 
-  const handleCreateTask = async (e) => {
-    e.preventDefault();
-    if (!newTask.title.trim()) {
-      toast.error('Task title is required');
-      return;
-    }
-
+  const handleCreateTask = async () => {
     try {
       const taskData = {
+        ...newTask,
         ...newTask,
         status: newTask.status || 'todo', // Ensure status is set
         isArchived: newTask.isArchived || false, // Ensure isArchived is set

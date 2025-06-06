@@ -1,0 +1,137 @@
+[
+  {
+    "id": 1,
+    "name": "Website Redesign",
+    "description": "Complete overhaul of the company website including UI/UX improvements, mobile optimization, and performance enhancements.",
+    "start_date": "2024-01-15",
+    "end_date": "2024-04-30",
+    "status": "in progress",
+    "assigned_users": ["user_001", "user_002", "user_003"]
+  },
+  {
+    "id": 2,
+    "name": "Mobile App Development",
+    "description": "Development of native mobile application for iOS and Android platforms with cross-platform compatibility.",
+    "start_date": "2024-02-01",
+    "end_date": "2024-08-15",
+    "status": "planning",
+    "assigned_users": ["user_004", "user_005"]
+  },
+  {
+    "id": 3,
+    "name": "Data Migration Project",
+    "description": "Migration of legacy database systems to modern cloud infrastructure with zero downtime requirements.",
+    "start_date": "2023-11-01",
+    "end_date": "2024-01-31",
+    "status": "completed",
+    "assigned_users": ["user_006", "user_007", "user_008", "user_009"]
+  },
+  {
+    "id": 4,
+    "name": "Marketing Campaign Q2",
+    "description": "Digital marketing campaign focusing on social media engagement and lead generation for Q2 targets.",
+    "start_date": "2024-03-01",
+    "end_date": "2024-06-30",
+    "status": "on hold",
+    "assigned_users": ["user_010", "user_011"]
+  },
+  {
+    "id": 5,
+    "name": "Security Audit",
+    "description": "Comprehensive security assessment and vulnerability testing of all company systems and applications.",
+    "start_date": "2024-01-08",
+    "end_date": "2024-02-28",
+    "status": "in progress",
+    "assigned_users": ["user_012", "user_013", "user_014"]
+  },
+  {
+    "id": 6,
+    "name": "Employee Training Portal",
+    "description": "Development of internal learning management system for employee skill development and certification tracking.",
+    "start_date": "2024-04-01",
+    "end_date": null,
+    "status": "planning",
+    "assigned_users": ["user_015", "user_016"]
+  },
+  {
+    "id": 7,
+    "name": "API Integration",
+    "description": "Integration with third-party payment processing and CRM systems to streamline business operations.",
+    "start_date": "2023-12-15",
+    "end_date": "2024-03-15",
+    "status": "in progress",
+    "assigned_users": ["user_017", "user_018", "user_019"]
+  },
+  {
+    "id": 8,
+    "name": "Office Relocation",
+    "description": "Planning and execution of office move including IT infrastructure setup and employee coordination.",
+    "start_date": "2023-10-01",
+    "end_date": "2024-01-15",
+    "status": "cancelled",
+    "assigned_users": ["user_020", "user_021"]
+  },
+  {
+    "id": 9,
+    "name": "Product Launch Campaign",
+    "description": "Comprehensive product launch strategy including marketing materials, press releases, and customer outreach.",
+    "start_date": "2024-05-01",
+    "end_date": "2024-07-31",
+    "status": "planning",
+    "assigned_users": ["user_022", "user_023", "user_024"]
+  },
+  {
+    "id": 10,
+    "name": "Cloud Infrastructure Setup",
+    "description": "Migration to cloud-based infrastructure with automated deployment pipelines and monitoring systems.",
+    "start_date": "2023-09-01",
+    "end_date": "2023-12-31",
+    "status": "completed",
+    "assigned_users": ["user_025", "user_026", "user_027", "user_028"]
+  },
+  {
+    "id": 11,
+    "name": "Customer Support Optimization",
+    "description": "Implementation of new customer support ticketing system and workflow improvements.",
+    "start_date": "2024-02-15",
+    "end_date": "2024-05-15",
+    "status": "on hold",
+    "assigned_users": ["user_029", "user_030"]
+  },
+  {
+    "id": 12,
+    "name": "Quality Assurance Framework",
+    "description": "Development of comprehensive QA testing framework and automated testing procedures.",
+    "start_date": "2024-01-20",
+    "end_date": "2024-04-20",
+    "status": "in progress",
+    "assigned_users": ["user_031", "user_032", "user_033"]
+  },
+  {
+    "id": 13,
+    "name": "Inventory Management System",
+    "description": "Complete overhaul of inventory tracking and management system with real-time reporting capabilities.",
+    "start_date": "2024-06-01",
+    "end_date": "2024-10-31",
+    "status": "planning",
+    "assigned_users": ["user_034", "user_035"]
+  },
+  {
+    "id": 14,
+    "name": "Performance Optimization",
+    "description": "System-wide performance improvements including database optimization and server upgrades.",
+    "start_date": "2023-08-01",
+    "end_date": "2023-11-30",
+    "status": "completed",
+    "assigned_users": ["user_036", "user_037", "user_038"]
+  },
+  {
+    "id": 15,
+    "name": "Compliance Documentation",
+    "description": "Creation of comprehensive compliance documentation and audit trail systems for regulatory requirements.",
+    "start_date": "2024-03-15",
+    "end_date": "2024-06-15",
+    "status": "in progress",
+    "assigned_users": ["user_039", "user_040", "user_041", "user_042"]
+  }
+]
